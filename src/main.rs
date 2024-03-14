@@ -2,7 +2,8 @@ use nannou::prelude::*;
 
 mod simulation;
 
-pub use crate::simulation::change_shade;
+//pub use crate::simulation::fluid_cube_add_density;
+pub use crate::simulation::mouse_clicked;
 
 fn main() {
     nannou::app(model).update(update).run();
@@ -22,6 +23,8 @@ impl Cell {
 pub struct Model {
     cells: Vec<Cell>,
     cell_size: f32,
+    add_density_x: f32,
+    add_density_y: f32,
 
     grid_size: i32,
     dt: f32,
@@ -42,6 +45,7 @@ pub struct Model {
 
 fn model(app: &App) -> Model {
     let _window = app.new_window().size(512, 512).view(view).build().unwrap();
+
     let mut cells = Vec::new();
     let grid_size: i32 = 100;
     let cell_size: f32 = 3.0;
@@ -59,6 +63,9 @@ fn model(app: &App) -> Model {
         cells,
         cell_size,
         grid_size,
+        add_density_x: -1.0,
+        add_density_y: -1.0,
+
         dt: 1.0 / 60.0,
         diff: 3.0,
         visc: 3.0,
@@ -77,7 +84,8 @@ fn model(app: &App) -> Model {
 }
 
 fn update(app: &App, model: &mut Model, _update: Update) {
-    simulation::change_shade(app, model, _update);
+    simulation::mouse_clicked(app);
+    //simulation::fluid_cube_add_density();
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
