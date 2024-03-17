@@ -2,8 +2,13 @@ use nannou::prelude::*;
 
 mod simulation;
 
-//pub use crate::simulation::fluid_cube_add_density;
+pub use crate::simulation::fluid_cube_add_density;
+pub use crate::simulation::fluid_cube_add_velocity;
 pub use crate::simulation::mouse_clicked;
+
+pub const AMOUNT_DENSITY: f32 = 0.03;
+pub const AMOUNT_X: f32 = 3.0;
+pub const AMOUNT_Y: f32 = 3.0;
 
 fn main() {
     nannou::app(model).update(update).run();
@@ -23,10 +28,8 @@ impl Cell {
 pub struct Model {
     cells: Vec<Cell>,
     cell_size: f32,
-    add_density_x: f32,
-    add_density_y: f32,
 
-    grid_size: i32,
+    grid_size: u32,
     dt: f32,
     diff: f32,
     visc: f32,
@@ -44,11 +47,17 @@ pub struct Model {
 }
 
 fn model(app: &App) -> Model {
-    let _window = app.new_window().size(512, 512).view(view).build().unwrap();
-
     let mut cells = Vec::new();
-    let grid_size: i32 = 100;
-    let cell_size: f32 = 3.0;
+    let grid_size: u32 = 60;
+    let cell_size: f32 = 4.0;
+
+    let _window = app
+        .new_window()
+        .resizable(false)
+        .size(512, 512)
+        .view(view)
+        .build()
+        .unwrap();
 
     for y in 0..grid_size {
         for x in 0..grid_size {
@@ -63,8 +72,6 @@ fn model(app: &App) -> Model {
         cells,
         cell_size,
         grid_size,
-        add_density_x: -1.0,
-        add_density_y: -1.0,
 
         dt: 1.0 / 60.0,
         diff: 3.0,
@@ -84,8 +91,28 @@ fn model(app: &App) -> Model {
 }
 
 fn update(app: &App, model: &mut Model, _update: Update) {
-    simulation::mouse_clicked(app);
-    //simulation::fluid_cube_add_density();
+    let cell_position_opt: Option<(u32, u32)> = simulation::mouse_clicked(app, model);
+
+    if cell_position_opt.is_some() {
+        let cell_position = cell_position_opt.unwrap();
+        simulation::fluid_cube_add_density(model, cell_position.0, cell_position.1, AMOUNT_DENSITY);
+        simulation::fluid_cube_add_velocity(
+            model,
+            cell_position.0,
+            cell_position.1,
+            AMOUNT_X,
+            AMOUNT_Y,
+        );
+    }
+
+    // Add all remaining functions here
+    // eg Diffuse, Project, Advect, Project
+
+    let mut counter: usize = 0;
+    for cell in model.cells.iter_mut() {
+        cell.shade = model.density[counter];
+        counter += 1;
+    }
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
