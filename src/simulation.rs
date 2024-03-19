@@ -50,7 +50,52 @@ pub fn set_bnd(model: &Model, b: u32, x: &mut Vec<f32>, n: u32) {
         }
     }
 
-    // rest of the function to write in here
+    x[index(0, 0, model.grid_size)] = 0.33
+        * (x[index(1, 0, model.grid_size)]
+            + x[index(0, 1, model.grid_size)]
+            + x[index(0, 0, model.grid_size)]);
+
+    x[index(0, n - 1, model.grid_size)] = 0.33
+        * (x[index(1, n - 1, model.grid_size)]
+            + x[index(0, n - 2, model.grid_size)]
+            + x[index(0, n - 1, model.grid_size)]);
+
+    x[index(n - 1, 0, model.grid_size)] = 0.33
+        * (x[index(n - 2, 0, model.grid_size)]
+            + x[index(n - 1, 1, model.grid_size)]
+            + x[index(n - 1, 0, model.grid_size)]);
+
+    x[index(n - 1, n - 1, model.grid_size)] = 0.33
+        * (x[index(n - 2, n - 1, model.grid_size)]
+            + x[index(n - 1, n - 2, model.grid_size)]
+            + x[index(n - 1, n - 1, model.grid_size)]);
+}
+
+pub fn lin_solve(
+    model: &Model,
+    b: u32,
+    x: &mut Vec<f32>,
+    x0: Vec<f32>,
+    a: f32,
+    c: f32,
+    iter: i32,
+    n: u32,
+) {
+    let c_recip: f32 = 1.0 / c;
+
+    for _ in 0..iter {
+        for j in 1..(n - 1) as u32 {
+            for i in 1..(n - 1) as u32 {
+                x[index(i, j, model.grid_size)] = (x0[index(i, j, model.grid_size)]
+                    + a * (x[index(i + 1, j, model.grid_size)]
+                        + x[index(i - 1, j, model.grid_size)]
+                        + x[index(i, j + 1, model.grid_size)]
+                        + x[index(i, j - 1, model.grid_size)]))
+                    * c_recip;
+            }
+        }
+    }
+    set_bnd(model, b, x, n)
 }
 
 pub fn mouse_clicked(app: &App, model: &Model) -> Option<(u32, u32)> {
