@@ -95,13 +95,30 @@ fn update(app: &App, model: &mut Model, _update: Update) {
 
     if cell_position_opt.is_some() {
         let cell_position = cell_position_opt.unwrap();
-        simulation::fluid_cube_add_density(model, cell_position.0, cell_position.1, AMOUNT_DENSITY);
+        simulation::fluid_cube_add_density(
+            model.grid_size,
+            model.density.as_mut_slice(),
+            cell_position.0,
+            cell_position.1,
+            AMOUNT_DENSITY,
+        );
         simulation::fluid_cube_add_velocity(
-            model,
+            model.grid_size,
+            model.vx.as_mut_slice(),
+            model.vy.as_mut_slice(),
             cell_position.0,
             cell_position.1,
             AMOUNT_X,
             AMOUNT_Y,
+        );
+        simulation::diffuse(
+            1,
+            &mut model.vx0.as_mut_slice(),
+            model.vx.as_slice(),
+            model.visc,
+            model.dt,
+            4,
+            model.grid_size,
         );
     }
 
