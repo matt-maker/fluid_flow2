@@ -2,9 +2,11 @@ use nannou::prelude::*;
 
 mod simulation;
 
+pub use crate::simulation::diffuse;
 pub use crate::simulation::fluid_cube_add_density;
 pub use crate::simulation::fluid_cube_add_velocity;
 pub use crate::simulation::mouse_clicked;
+pub use crate::simulation::project;
 
 pub const AMOUNT_DENSITY: f32 = 0.03;
 pub const AMOUNT_X: f32 = 3.0;
@@ -39,11 +41,9 @@ pub struct Model {
 
     vx: Vec<f32>,
     vy: Vec<f32>,
-    vz: Vec<f32>,
 
     vx0: Vec<f32>,
     vy0: Vec<f32>,
-    vz0: Vec<f32>,
 }
 
 fn model(app: &App) -> Model {
@@ -82,11 +82,9 @@ fn model(app: &App) -> Model {
 
         vx: vec![0.0; (grid_size * grid_size) as usize],
         vy: vec![0.0; (grid_size * grid_size) as usize],
-        vz: vec![0.0; (grid_size * grid_size) as usize],
 
         vx0: vec![0.0; (grid_size * grid_size) as usize],
         vy0: vec![0.0; (grid_size * grid_size) as usize],
-        vz0: vec![0.0; (grid_size * grid_size) as usize],
     }
 }
 
@@ -117,6 +115,14 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             model.vx.as_slice(),
             model.visc,
             model.dt,
+            4,
+            model.grid_size,
+        );
+        simulation::project(
+            &mut model.vx0.as_mut_slice(),
+            &mut model.vy0.as_mut_slice(),
+            &mut model.vx.as_mut_slice(),
+            &mut model.vy.as_mut_slice(),
             4,
             model.grid_size,
         );

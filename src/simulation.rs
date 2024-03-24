@@ -94,15 +94,37 @@ pub fn diffuse(b: u32, x: &mut [f32], x0: &[f32], diff: f32, dt: f32, iter: i32,
 }
 
 pub fn project(
-    model: &Model,
-    veloc_x: Vec<f32>,
-    veloc_y: Vec<f32>,
-    p: Vec<f32>,
-    div: Vec<f32>,
+    veloc_x: &mut [f32],
+    veloc_y: &mut [f32],
+    p: &mut [f32],
+    div: &mut [f32],
     iter: i32,
     n: u32,
 ) {
-    //
+    for j in 1..(n - 1) {
+        for i in 1..(n - 1) {
+            div[index(i, j, n)] = -0.5
+                * (veloc_x[index(i + 1, j, n)] - veloc_x[index((i - 1), j, n)]
+                    + veloc_y[index(i, j + 1, n)]
+                    - veloc_y[index(i, j - 1, n)])
+                / n as f32;
+            p[index(i, j, n)] = 0.0;
+        }
+    }
+    set_bnd(0, div, n);
+    set_bnd(0, p, n);
+    lin_solve(0, p, div, 1.0, 6.0, iter, n);
+
+    for j in 1..(n - 1) {
+        for i in 1..(n - 1) {
+            veloc_x[index(i, j, n)] -=
+                0.5 * (p[index(i + 1, j, n)] - p[index(i - 1, j, n)]) * n as f32;
+            veloc_y[index(i, j, n)] -=
+                0.5 * (p[index(i, j + 1, n)] - p[index(i, j - 1, n)]) * n as f32;
+        }
+    }
+    set_bnd(1, veloc_x, n);
+    set_bnd(2, veloc_y, n);
 }
 
 pub fn advect(
