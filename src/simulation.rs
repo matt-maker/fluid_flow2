@@ -104,7 +104,7 @@ pub fn project(
     for j in 1..(n - 1) {
         for i in 1..(n - 1) {
             div[index(i, j, n)] = -0.5
-                * (veloc_x[index(i + 1, j, n)] - veloc_x[index((i - 1), j, n)]
+                * (veloc_x[index(i + 1, j, n)] - veloc_x[index(i - 1, j, n)]
                     + veloc_y[index(i, j + 1, n)]
                     - veloc_y[index(i, j - 1, n)])
                 / n as f32;
@@ -127,17 +127,27 @@ pub fn project(
     set_bnd(2, veloc_y, n);
 }
 
-pub fn advect(
-    model: &Model,
-    b: i32,
-    d: Vec<f32>,
-    d0: Vec<f32>,
-    veloc_x: Vec<f32>,
-    veloc_y: Vec<f32>,
-    dt: f32,
-    n: u32,
-) {
-    //
+pub fn advect(b: i32, d: &[f32], d0: &[f32], veloc_x: &[f32], veloc_y: &[f32], dt: f32, n: u32) {
+    let (i0, i1, j0, j1): (f32, f32, f32, f32) = (0.0, 0.0, 0.0, 0.0);
+    let dtx = dt * (n - 2) as f32;
+    let dty = dt * (n - 2) as f32;
+
+    let (s0, s1, t0, t1): (f32, f32, f32, f32) = (0.0, 0.0, 0.0, 0.0);
+
+    let nfloat: f32 = n as f32;
+    let (mut ifloat, mut jfloat): (f32, f32) = (0.0, 0.0);
+
+    for j in 1..(n - 1) {
+        jfloat += 1.0;
+        for i in 1..(n - 1) {
+            ifloat += 1.0;
+            let tmp1 = dtx * veloc_x[index(i, j, n)];
+            let tmp2 = dty * veloc_y[index(i, j, n)];
+            let x = ifloat - tmp1;
+            let y = jfloat - tmp2;
+            //
+        }
+    }
 }
 
 pub fn mouse_clicked(app: &App, model: &Model) -> Option<(u32, u32)> {

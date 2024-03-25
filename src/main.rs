@@ -2,6 +2,7 @@ use nannou::prelude::*;
 
 mod simulation;
 
+pub use crate::simulation::advect;
 pub use crate::simulation::diffuse;
 pub use crate::simulation::fluid_cube_add_density;
 pub use crate::simulation::fluid_cube_add_velocity;
@@ -126,6 +127,15 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             4,
             model.grid_size,
         );
+        simulation::advect(
+            1,
+            model.vx.as_mut_slice(),
+            model.vx0.clone().as_mut_slice(),
+            model.vx0.as_mut_slice(),
+            model.vy0.as_mut_slice(),
+            model.dt,
+            model.grid_size,
+        )
     }
 
     // Add all remaining functions here
