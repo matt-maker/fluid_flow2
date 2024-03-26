@@ -127,12 +127,17 @@ pub fn project(
     set_bnd(2, veloc_y, n);
 }
 
-pub fn advect(b: i32, d: &[f32], d0: &[f32], veloc_x: &[f32], veloc_y: &[f32], dt: f32, n: u32) {
-    let (i0, i1, j0, j1): (f32, f32, f32, f32) = (0.0, 0.0, 0.0, 0.0);
+pub fn advect(
+    b: u32,
+    d: &mut [f32],
+    d0: &[f32],
+    veloc_x: &[f32],
+    veloc_y: &[f32],
+    dt: f32,
+    n: u32,
+) {
     let dtx = dt * (n - 2) as f32;
     let dty = dt * (n - 2) as f32;
-
-    let (s0, s1, t0, t1): (f32, f32, f32, f32) = (0.0, 0.0, 0.0, 0.0);
 
     let nfloat: f32 = n as f32;
     let (mut ifloat, mut jfloat): (f32, f32) = (0.0, 0.0);
@@ -143,11 +148,42 @@ pub fn advect(b: i32, d: &[f32], d0: &[f32], veloc_x: &[f32], veloc_y: &[f32], d
             ifloat += 1.0;
             let tmp1 = dtx * veloc_x[index(i, j, n)];
             let tmp2 = dty * veloc_y[index(i, j, n)];
-            let x = ifloat - tmp1;
-            let y = jfloat - tmp2;
-            //
+            let mut x = ifloat - tmp1;
+            let mut y = jfloat - tmp2;
+
+            if x < 0.5 {
+                x = 0.5
+            };
+            if x > (nfloat + 0.5) {
+                x = nfloat + 0.5
+            };
+            let i0 = x.floor();
+            let i1 = i0 + 1.0;
+            if y < 0.5 {
+                y = 0.5
+            };
+            if y > (nfloat + 0.5) {
+                y = nfloat + 0.5
+            };
+            let j0 = y.floor();
+            let j1 = j0 + 1.0;
+
+            let s1 = x - i0;
+            let s0 = 1.0 - s1;
+            let t1 = y - j0;
+            let t0 = 1.0 - t1;
+
+            let i0i: u32 = i0 as u32;
+            let i1i: u32 = i1 as u32;
+            let j0i: u32 = j0 as u32;
+            let j1i: u32 = j1 as u32;
+
+            d[index(i, j, n)] = s0
+                * ((t0 * d0[index(i0i, j0i, n)]) + (t1 * d0[index(i0i, j1i, n)]))
+                + s1 * ((t0 * d0[index(i1i, j0i, n)]) + (t1 * d0[index(i1i, j1i, n)]));
         }
     }
+    set_bnd(b, d, n);
 }
 
 pub fn mouse_clicked(app: &App, model: &Model) -> Option<(u32, u32)> {

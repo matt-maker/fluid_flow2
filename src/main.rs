@@ -127,11 +127,12 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             4,
             model.grid_size,
         );
+        // Can avoid clone as these don't need to be mut
         simulation::advect(
             1,
             model.vx.as_mut_slice(),
             model.vx0.clone().as_mut_slice(),
-            model.vx0.as_mut_slice(),
+            model.vx0.as_slice(),
             model.vy0.as_mut_slice(),
             model.dt,
             model.grid_size,
