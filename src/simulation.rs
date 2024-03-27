@@ -1,14 +1,6 @@
 use crate::Model;
 use nannou::prelude::*;
 
-/*pub fn change_shade(app: &App, model: &mut Model, _update: Update) {
-    let time = app.elapsed_frames() as f32 / 100.0;
-
-    for cell in model.cells.iter_mut() {
-        cell.shade = time - time.floor();
-    }
-}*/
-
 fn index(x: u32, y: u32, n: u32) -> usize {
     (x + (y * n)) as usize
 }
@@ -108,9 +100,18 @@ pub fn project(
                     + veloc_y[index(i, j + 1, n)]
                     - veloc_y[index(i, j - 1, n)])
                 / n as f32;
+            /*println!(
+                "{}, {}, {}, {}, {}",
+                veloc_x[index(i + 1, j, n)],
+                veloc_x[index(i - 1, j, n)],
+                veloc_y[index(i, j + 1, n)],
+                veloc_y[index(i, j - 1, n)],
+                div[index(i, j, n)]
+            );*/
             p[index(i, j, n)] = 0.0;
         }
     }
+
     set_bnd(0, div, n);
     set_bnd(0, p, n);
     lin_solve(0, p, div, 1.0, 6.0, iter, n);
@@ -142,9 +143,9 @@ pub fn advect(
     let nfloat: f32 = n as f32;
     let (mut ifloat, mut jfloat): (f32, f32) = (0.0, 0.0);
 
-    for j in 1..(n - 1) {
+    for j in 1..(n - 2) {
         jfloat += 1.0;
-        for i in 1..(n - 1) {
+        for i in 1..(n - 2) {
             ifloat += 1.0;
             let tmp1 = dtx * veloc_x[index(i, j, n)];
             let tmp2 = dty * veloc_y[index(i, j, n)];

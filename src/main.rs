@@ -9,7 +9,7 @@ pub use crate::simulation::fluid_cube_add_velocity;
 pub use crate::simulation::mouse_clicked;
 pub use crate::simulation::project;
 
-pub const AMOUNT_DENSITY: f32 = 0.03;
+pub const AMOUNT_DENSITY: f32 = 0.06;
 pub const AMOUNT_X: f32 = 3.0;
 pub const AMOUNT_Y: f32 = 3.0;
 
@@ -49,7 +49,7 @@ pub struct Model {
 
 fn model(app: &App) -> Model {
     let mut cells = Vec::new();
-    let grid_size: u32 = 60;
+    let grid_size: u32 = 20;
     let cell_size: f32 = 4.0;
 
     let _window = app
@@ -75,8 +75,8 @@ fn model(app: &App) -> Model {
         grid_size,
 
         dt: 1.0 / 60.0,
-        diff: 3.0,
-        visc: 3.0,
+        diff: 1.0,
+        visc: 2.0,
 
         s: vec![0.0; (grid_size * grid_size) as usize],
         density: vec![0.0; (grid_size * grid_size) as usize],
@@ -101,6 +101,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             cell_position.1,
             AMOUNT_DENSITY,
         );
+
         simulation::fluid_cube_add_velocity(
             model.grid_size,
             model.vx.as_mut_slice(),
@@ -110,37 +111,85 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             AMOUNT_X,
             AMOUNT_Y,
         );
-        simulation::diffuse(
-            1,
-            &mut model.vx0.as_mut_slice(),
-            model.vx.as_slice(),
-            model.visc,
-            model.dt,
-            4,
-            model.grid_size,
-        );
-        simulation::project(
-            &mut model.vx0.as_mut_slice(),
-            &mut model.vy0.as_mut_slice(),
-            &mut model.vx.as_mut_slice(),
-            &mut model.vy.as_mut_slice(),
-            4,
-            model.grid_size,
-        );
-        // Can avoid clone as these don't need to be mut
-        simulation::advect(
-            1,
-            model.vx.as_mut_slice(),
-            model.vx0.clone().as_mut_slice(),
-            model.vx0.as_slice(),
-            model.vy0.as_mut_slice(),
-            model.dt,
-            model.grid_size,
-        )
     }
 
-    // Add all remaining functions here
-    // eg Diffuse, Project, Advect, Project
+    simulation::diffuse(
+        1,
+        &mut model.vx0.as_mut_slice(),
+        model.vx.as_slice(),
+        model.visc,
+        model.dt,
+        4,
+        model.grid_size,
+    );
+
+    simulation::diffuse(
+        2,
+        &mut model.vy0.as_mut_slice(),
+        model.vy.as_slice(),
+        model.visc,
+        model.dt,
+        4,
+        model.grid_size,
+    );
+
+    simulation::project(
+        &mut model.vx0.as_mut_slice(),
+        &mut model.vy0.as_mut_slice(),
+        &mut model.vx.as_mut_slice(),
+        &mut model.vy.as_mut_slice(),
+        4,
+        model.grid_size,
+    );
+
+    simulation::advect(
+        1,
+        model.vx.as_mut_slice(),
+        model.vx0.clone().as_mut_slice(),
+        model.vx0.as_slice(),
+        model.vy0.as_mut_slice(),
+        model.dt,
+        model.grid_size,
+    );
+
+    simulation::advect(
+        2,
+        model.vy.as_mut_slice(),
+        model.vy0.clone().as_mut_slice(),
+        model.vx0.as_slice(),
+        model.vy0.as_mut_slice(),
+        model.dt,
+        model.grid_size,
+    );
+
+    simulation::project(
+        model.vx.as_mut_slice(),
+        model.vy.as_mut_slice(),
+        model.vx0.as_mut_slice(),
+        model.vy0.as_mut_slice(),
+        4,
+        model.grid_size,
+    );
+
+    simulation::diffuse(
+        0,
+        model.s.as_mut_slice(),
+        model.density.as_slice(),
+        model.diff,
+        model.dt,
+        4,
+        model.grid_size,
+    );
+
+    simulation::advect(
+        0,
+        model.density.as_mut_slice(),
+        model.s.as_slice(),
+        model.vx.as_slice(),
+        model.vy.as_slice(),
+        model.dt,
+        model.grid_size,
+    );
 
     let mut counter: usize = 0;
     for cell in model.cells.iter_mut() {
