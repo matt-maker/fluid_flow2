@@ -1,190 +1,92 @@
 use crate::Model;
 use nannou::prelude::*;
 
-fn index(x: u32, y: u32, n: u32) -> usize {
-    (x + (y * n)) as usize
-}
-
-pub fn fluid_cube_add_density(n: u32, density: &mut [f32], x: u32, y: u32, amount: f32) {
-    density[index(x, y, n)] += amount;
-}
-
-pub fn fluid_cube_add_velocity(
-    n: u32,
-    vx: &mut [f32],
-    vy: &mut [f32],
-    x: u32,
-    y: u32,
-    amountx: f32,
-    amounty: f32,
-) {
-    let index = index(x, y, n);
-    vx[index] += amountx;
-    vy[index] += amounty;
-}
-
-pub fn set_bnd(b: u32, x: &mut [f32], n: u32) {
-    for i in 1..(n - 1) {
-        if b == 2 {
-            x[index(i, 0, n)] = x[index(i, 1, n)] * -1.0
-        } else {
-            x[index(i, 0, n)] = x[index(i, 1, n)]
-        }
-        if b == 2 {
-            x[index(i, n - 1, n)] = x[index(i, n - 2, n)] * -1.0
-        } else {
-            x[index(i, n - 1, n)] = x[index(i, n - 2, n)]
-        }
-    }
-
-    for j in 1..(n - 1) {
-        if b == 1 {
-            x[index(0, j, n)] = x[index(1, j, n)] * -1.0
-        } else {
-            x[index(0, j, n)] = x[index(1, j, n)]
-        }
-        if b == 1 {
-            x[index(n - 1, j, n)] = x[index(n - 2, j, n)] * -1.0
-        } else {
-            x[index(n - 1, j, n)] = x[index(n - 2, j, n)]
-        }
-    }
-
-    x[index(0, 0, n)] = 0.33 * (x[index(1, 0, n)] + x[index(0, 1, n)] + x[index(0, 0, n)]);
-
-    x[index(0, n - 1, n)] =
-        0.33 * (x[index(1, n - 1, n)] + x[index(0, n - 2, n)] + x[index(0, n - 1, n)]);
-
-    x[index(n - 1, 0, n)] =
-        0.33 * (x[index(n - 2, 0, n)] + x[index(n - 1, 1, n)] + x[index(n - 1, 0, n)]);
-
-    x[index(n - 1, n - 1, n)] =
-        0.33 * (x[index(n - 2, n - 1, n)] + x[index(n - 1, n - 2, n)] + x[index(n - 1, n - 1, n)]);
-}
-
-pub fn lin_solve(b: u32, x: &mut [f32], x0: &[f32], a: f32, c: f32, iter: i32, n: u32) {
-    let c_recip: f32 = 1.0 / c;
-
-    for _ in 0..iter {
-        for j in 1..(n - 1) as u32 {
-            for i in 1..(n - 1) as u32 {
-                x[index(i, j, n)] = (x0[index(i, j, n)]
-                    + a * (x[index(i + 1, j, n)]
-                        + x[index(i - 1, j, n)]
-                        + x[index(i, j + 1, n)]
-                        + x[index(i, j - 1, n)]))
-                    * c_recip;
+pub fn integrate(num_y: u32, num_x: u32, s: &[f32], v: &mut [f32], dt: f32, gravity: f32) {
+    let n = num_y;
+    for i in 1..num_x {
+        for j in 1..num_y - 1 {
+            if s[(i * n + j) as usize] != 0.0 && s[(i * n - j - 1) as usize] != 0.0 {
+                v[(i * n + j) as usize] += gravity * dt;
             }
         }
     }
-    set_bnd(b, x, n)
 }
 
-pub fn diffuse(b: u32, x: &mut [f32], x0: &[f32], diff: f32, dt: f32, iter: i32, n: u32) {
-    let a: f32 = dt * diff * (n - 2) as f32 * (n - 2) as f32;
-    lin_solve(b, x, x0, a, 1.0 + 6.0 * a, iter, n);
-}
-
-pub fn project(
-    veloc_x: &mut [f32],
-    veloc_y: &mut [f32],
+pub fn solve_incompressibility(
+    num_x: u32,
+    num_y: u32,
+    density: f32,
+    h: f32,
+    s: &[f32],
+    v: &mut [f32],
+    u: &mut [f32],
     p: &mut [f32],
-    div: &mut [f32],
-    iter: i32,
-    n: u32,
+    over_relaxation: f32,
+    num_iters: u32,
+    dt: f32,
 ) {
-    for j in 1..(n - 1) {
-        for i in 1..(n - 1) {
-            div[index(i, j, n)] = -0.5
-                * (veloc_x[index(i + 1, j, n)] - veloc_x[index(i - 1, j, n)]
-                    + veloc_y[index(i, j + 1, n)]
-                    - veloc_y[index(i, j - 1, n)])
-                / n as f32;
-            /*println!(
-                "{}, {}, {}, {}, {}",
-                veloc_x[index(i + 1, j, n)],
-                veloc_x[index(i - 1, j, n)],
-                veloc_y[index(i, j + 1, n)],
-                veloc_y[index(i, j - 1, n)],
-                div[index(i, j, n)]
-            );*/
-            p[index(i, j, n)] = 0.0;
+    let n = num_y;
+    let cp = density * h / dt;
+
+    for _ in 0..num_iters {
+        for i in 1..num_x - 1 {
+            for j in 1..num_y - 1 {
+                if s[(i * n + j) as usize] == 0.0 {
+                    continue;
+                }
+                let mut s_value = s[(i * n + j) as usize];
+                let sx0 = s[((i - 1) * n + j) as usize];
+                let sx1 = s[((i + 1) * n + j) as usize];
+                let sy0 = s[(i * n + j - 1) as usize];
+                let sy1 = s[(i * n - j + 1) as usize];
+                s_value = sx0 + sx1 + sy0 + sy1;
+                if s_value == 0.0 {
+                    continue;
+                }
+                let div = u[((i + 1) * n + j) as usize] - u[(i * n + j) as usize]
+                    + v[(i * n + j + 1) as usize]
+                    - v[(i * n + j) as usize];
+                let mut p_value = -div / s_value;
+                p_value *= over_relaxation;
+                p[(i * n + j) as usize] += cp * p_value;
+
+                u[(i * n + j) as usize] -= sx0 * p_value;
+                u[((i + 1) * n + j) as usize] += sx1 * p_value;
+                v[(i * n + j) as usize] -= sy0 * p_value;
+                v[(i * n + j + 1) as usize] += sy1 * p_value;
+            }
         }
     }
-
-    set_bnd(0, div, n);
-    set_bnd(0, p, n);
-    lin_solve(0, p, div, 1.0, 6.0, iter, n);
-
-    for j in 1..(n - 1) {
-        for i in 1..(n - 1) {
-            veloc_x[index(i, j, n)] -=
-                0.5 * (p[index(i + 1, j, n)] - p[index(i - 1, j, n)]) * n as f32;
-            veloc_y[index(i, j, n)] -=
-                0.5 * (p[index(i, j + 1, n)] - p[index(i, j - 1, n)]) * n as f32;
-        }
-    }
-    set_bnd(1, veloc_x, n);
-    set_bnd(2, veloc_y, n);
 }
 
-pub fn advect(
-    b: u32,
-    d: &mut [f32],
-    d0: &[f32],
-    veloc_x: &[f32],
-    veloc_y: &[f32],
-    dt: f32,
-    n: u32,
-) {
-    let dtx = dt * (n - 2) as f32;
-    let dty = dt * (n - 2) as f32;
-
-    let nfloat: f32 = n as f32;
-    let (mut ifloat, mut jfloat): (f32, f32) = (0.0, 0.0);
-
-    for j in 1..(n - 2) {
-        jfloat += 1.0;
-        for i in 1..(n - 2) {
-            ifloat += 1.0;
-            let tmp1 = dtx * veloc_x[index(i, j, n)];
-            let tmp2 = dty * veloc_y[index(i, j, n)];
-            let mut x = ifloat - tmp1;
-            let mut y = jfloat - tmp2;
-
-            if x < 0.5 {
-                x = 0.5
-            };
-            if x > (nfloat + 0.5) {
-                x = nfloat + 0.5
-            };
-            let i0 = x.floor();
-            let i1 = i0 + 1.0;
-            if y < 0.5 {
-                y = 0.5
-            };
-            if y > (nfloat + 0.5) {
-                y = nfloat + 0.5
-            };
-            let j0 = y.floor();
-            let j1 = j0 + 1.0;
-
-            let s1 = x - i0;
-            let s0 = 1.0 - s1;
-            let t1 = y - j0;
-            let t0 = 1.0 - t1;
-
-            let i0i: u32 = i0 as u32;
-            let i1i: u32 = i1 as u32;
-            let j0i: u32 = j0 as u32;
-            let j1i: u32 = j1 as u32;
-
-            d[index(i, j, n)] = s0
-                * ((t0 * d0[index(i0i, j0i, n)]) + (t1 * d0[index(i0i, j1i, n)]))
-                + s1 * ((t0 * d0[index(i1i, j0i, n)]) + (t1 * d0[index(i1i, j1i, n)]));
-        }
+pub fn extrapolate(num_x: u32, num_y: u32, u: &mut [f32], v: &mut [f32]) {
+    let n = num_y;
+    for i in 0..num_x {
+        u[(i * n + 0) as usize] = u[(i * n + 1) as usize];
+        u[(i * n + num_y - 1) as usize] = u[(i * n + num_y - 2) as usize];
     }
-    set_bnd(b, d, n);
+    for j in 0..num_y {
+        v[(0 * n + j) as usize] = v[(1 * n + j) as usize];
+        v[((num_x - 1) * n + j) as usize] = v[((num_x - 2) * n + j) as usize];
+    }
+}
+
+fn sample_field(num_y: u32, num_x: u32, h: f32, x: f32, y: f32, field: &str, u: &mut [f32]) {
+    let n = num_y;
+    let h = h;
+    let h1 = 1.0 / h;
+    let h2 = 0.5 * h;
+    let mut x_value = x.min(num_x as f32 * h).max(h);
+    let mut y_value = y.min(num_y as f32 * h).max(h);
+
+    let dx = 0.0;
+    let dy = 0.0;
+
+    let f: &mut [f32];
+
+    match field {
+        U_FIELD => f = u,
+    }
 }
 
 pub fn mouse_clicked(app: &App, model: &Model) -> Option<(u32, u32)> {

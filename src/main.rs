@@ -2,16 +2,7 @@ use nannou::prelude::*;
 
 mod simulation;
 
-pub use crate::simulation::advect;
-pub use crate::simulation::diffuse;
-pub use crate::simulation::fluid_cube_add_density;
-pub use crate::simulation::fluid_cube_add_velocity;
 pub use crate::simulation::mouse_clicked;
-pub use crate::simulation::project;
-
-pub const AMOUNT_DENSITY: f32 = 0.06;
-pub const AMOUNT_X: f32 = 3.0;
-pub const AMOUNT_Y: f32 = 3.0;
 
 fn main() {
     nannou::app(model).update(update).run();
@@ -31,25 +22,27 @@ impl Cell {
 pub struct Model {
     cells: Vec<Cell>,
     cell_size: f32,
-
     grid_size: u32,
-    dt: f32,
-    diff: f32,
-    visc: f32,
 
+    density: f32,
+    num_x: u32,
+    num_y: u32,
+    num_cells: u32,
+    h: u32,
+    u: Vec<f32>,
+    v: Vec<f32>,
+    new_u: Vec<f32>,
+    new_v: Vec<f32>,
+    p: Vec<f32>,
     s: Vec<f32>,
-    density: Vec<f32>,
-
-    vx: Vec<f32>,
-    vy: Vec<f32>,
-
-    vx0: Vec<f32>,
-    vy0: Vec<f32>,
+    m: Vec<f32>,
+    new_m: Vec<f32>,
+    num: u32,
 }
 
 fn model(app: &App) -> Model {
     let mut cells = Vec::new();
-    let grid_size: u32 = 20;
+    let grid_size: u32 = 25;
     let cell_size: f32 = 4.0;
 
     let _window = app
@@ -74,126 +67,29 @@ fn model(app: &App) -> Model {
         cell_size,
         grid_size,
 
-        dt: 1.0 / 60.0,
-        diff: 1.0,
-        visc: 2.0,
-
-        s: vec![0.0; (grid_size * grid_size) as usize],
-        density: vec![0.0; (grid_size * grid_size) as usize],
-
-        vx: vec![0.0; (grid_size * grid_size) as usize],
-        vy: vec![0.0; (grid_size * grid_size) as usize],
-
-        vx0: vec![0.0; (grid_size * grid_size) as usize],
-        vy0: vec![0.0; (grid_size * grid_size) as usize],
+        density: 1000.0,
+        num_x: grid_size + 2,
+        num_y: grid_size + 2,
+        num_cells: (grid_size + 2) * (grid_size + 2),
+        h: 0,
+        u: vec![0.0; ((grid_size + 2) * (grid_size + 2)) as usize],
+        v: vec![0.0; ((grid_size + 2) * (grid_size + 2)) as usize],
+        new_u: vec![0.0; ((grid_size + 2) * (grid_size + 2)) as usize],
+        new_v: vec![0.0; ((grid_size + 2) * (grid_size + 2)) as usize],
+        p: vec![0.0; ((grid_size + 2) * (grid_size + 2)) as usize],
+        s: vec![0.0; ((grid_size + 2) * (grid_size + 2)) as usize],
+        m: vec![0.0; ((grid_size + 2) * (grid_size + 2)) as usize],
+        new_m: vec![1.0; ((grid_size + 2) * (grid_size + 2)) as usize],
+        num: grid_size * grid_size,
     }
 }
 
 fn update(app: &App, model: &mut Model, _update: Update) {
-    let cell_position_opt: Option<(u32, u32)> = simulation::mouse_clicked(app, model);
-
-    if cell_position_opt.is_some() {
-        let cell_position = cell_position_opt.unwrap();
-        simulation::fluid_cube_add_density(
-            model.grid_size,
-            model.density.as_mut_slice(),
-            cell_position.0,
-            cell_position.1,
-            AMOUNT_DENSITY,
-        );
-
-        simulation::fluid_cube_add_velocity(
-            model.grid_size,
-            model.vx.as_mut_slice(),
-            model.vy.as_mut_slice(),
-            cell_position.0,
-            cell_position.1,
-            AMOUNT_X,
-            AMOUNT_Y,
-        );
-    }
-
-    simulation::diffuse(
-        1,
-        &mut model.vx0.as_mut_slice(),
-        model.vx.as_slice(),
-        model.visc,
-        model.dt,
-        4,
-        model.grid_size,
-    );
-
-    simulation::diffuse(
-        2,
-        &mut model.vy0.as_mut_slice(),
-        model.vy.as_slice(),
-        model.visc,
-        model.dt,
-        4,
-        model.grid_size,
-    );
-
-    simulation::project(
-        &mut model.vx0.as_mut_slice(),
-        &mut model.vy0.as_mut_slice(),
-        &mut model.vx.as_mut_slice(),
-        &mut model.vy.as_mut_slice(),
-        4,
-        model.grid_size,
-    );
-
-    simulation::advect(
-        1,
-        model.vx.as_mut_slice(),
-        model.vx0.clone().as_mut_slice(),
-        model.vx0.as_slice(),
-        model.vy0.as_mut_slice(),
-        model.dt,
-        model.grid_size,
-    );
-
-    simulation::advect(
-        2,
-        model.vy.as_mut_slice(),
-        model.vy0.clone().as_mut_slice(),
-        model.vx0.as_slice(),
-        model.vy0.as_mut_slice(),
-        model.dt,
-        model.grid_size,
-    );
-
-    simulation::project(
-        model.vx.as_mut_slice(),
-        model.vy.as_mut_slice(),
-        model.vx0.as_mut_slice(),
-        model.vy0.as_mut_slice(),
-        4,
-        model.grid_size,
-    );
-
-    simulation::diffuse(
-        0,
-        model.s.as_mut_slice(),
-        model.density.as_slice(),
-        model.diff,
-        model.dt,
-        4,
-        model.grid_size,
-    );
-
-    simulation::advect(
-        0,
-        model.density.as_mut_slice(),
-        model.s.as_slice(),
-        model.vx.as_slice(),
-        model.vy.as_slice(),
-        model.dt,
-        model.grid_size,
-    );
+    let _cell_position_opt: Option<(u32, u32)> = simulation::mouse_clicked(app, model);
 
     let mut counter: usize = 0;
     for cell in model.cells.iter_mut() {
-        cell.shade = model.density[counter];
+        cell.shade = model.m[counter];
         counter += 1;
     }
 }
