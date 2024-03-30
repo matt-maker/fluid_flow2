@@ -3,6 +3,7 @@ use nannou::prelude::*;
 mod simulation;
 
 pub use crate::simulation::mouse_clicked;
+pub use crate::simulation::sample_field;
 
 fn main() {
     nannou::app(model).update(update).run();

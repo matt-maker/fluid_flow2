@@ -71,22 +71,74 @@ pub fn extrapolate(num_x: u32, num_y: u32, u: &mut [f32], v: &mut [f32]) {
     }
 }
 
-fn sample_field(num_y: u32, num_x: u32, h: f32, x: f32, y: f32, field: &str, u: &mut [f32]) {
+pub fn sample_field(
+    num_y: u32,
+    num_x: u32,
+    h: f32,
+    x: f32,
+    y: f32,
+    field: &str,
+    u: &mut [f32],
+    v: &mut [f32],
+    m: &mut [f32],
+) -> Option<f32> {
     let n = num_y;
     let h = h;
     let h1 = 1.0 / h;
     let h2 = 0.5 * h;
-    let mut x_value = x.min(num_x as f32 * h).max(h);
-    let mut y_value = y.min(num_y as f32 * h).max(h);
+    let x = x.min(num_x as f32 * h).max(h);
+    let y = y.min(num_y as f32 * h).max(h);
 
-    let dx = 0.0;
-    let dy = 0.0;
-
+    let mut dx = 0.0;
+    let mut dy = 0.0;
     let f: &mut [f32];
+    let field_char = field.chars().nth(0).unwrap();
 
-    match field {
-        U_FIELD => f = u,
+    match field_char {
+        'U' => {
+            f = u;
+            dy = h2;
+        }
+        'V' => {
+            f = v;
+            dx = h2;
+        }
+        'S' => {
+            f = m;
+            dx = h2;
+            dy = h2;
+        }
+        _ => {
+            panic!();
+        }
     }
+
+    let x0 = ((x - dx) * h1).floor().min(num_x as f32 - 1.0);
+    let tx = ((x - dx) - x0 * h) * h1;
+    let x1 = (x0 + 1.0).min(num_x as f32 - 1.0);
+
+    let y0 = ((y - dy) * h1).floor().min(num_y as f32 - 1.0);
+    let ty = ((y - dy) - y0 * h) * h1;
+    let y1 = (y0 + 1.0).min(num_y as f32 - 1.0);
+
+    let sx = 1.0 - tx;
+    let sy = 1.0 - ty;
+
+    let val: f32 = sx * sy * f[(x0 * n as f32 + y0) as usize]
+        + tx * sy * f[(x1 * n as f32 + y1) as usize]
+        + tx * ty * f[(x1 * n as f32 + y1) as usize]
+        + sx * ty * f[(x0 * n as f32 + y1) as usize];
+    return Some(val);
+}
+
+fn avg_u(num_y: u32, u: &[f32], i: u32, j: u32) -> Option<f32> {
+    let n = num_y;
+    let u_value = (u[(i * n + j - 1) as usize]
+        + u[(i * n + j) as usize]
+        + u[((i + 1) * n + j - 1) as usize]
+        + u[((i + 1) * n + j) as usize])
+        * 0.25;
+    return Some(u_value);
 }
 
 pub fn mouse_clicked(app: &App, model: &Model) -> Option<(u32, u32)> {
