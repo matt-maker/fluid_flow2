@@ -71,7 +71,7 @@ pub fn extrapolate(num_x: u32, num_y: u32, u: &mut [f32], v: &mut [f32]) {
     }
 }
 
-pub fn sample_field(
+fn sample_field(
     num_y: u32,
     num_x: u32,
     h: f32,
@@ -139,6 +139,105 @@ fn avg_u(num_y: u32, u: &[f32], i: u32, j: u32) -> Option<f32> {
         + u[((i + 1) * n + j) as usize])
         * 0.25;
     return Some(u_value);
+}
+
+fn avg_v(num_y: u32, v: &[f32], i: u32, j: u32) -> Option<f32> {
+    let n = num_y;
+    let v_value = (v[((i - 1) * n + j) as usize]
+        + v[(i * n + j) as usize]
+        + v[((i - 1) * n + j + 1) as usize]
+        + v[(i * n + j + 1) as usize])
+        * 0.25;
+    return Some(v_value);
+}
+
+pub fn advect_vel(
+    dt: f32,
+    new_u: &mut [f32],
+    new_v: &mut [f32],
+    u: &mut [f32],
+    v: &mut [f32],
+    m: &mut [f32],
+    s: &[f32],
+    num_x: u32,
+    num_y: u32,
+    h: f32,
+) {
+    new_u.copy_from_slice(u);
+    new_v.copy_from_slice(v);
+
+    let n = num_y;
+    let h = h;
+    let h2 = 0.5 * h;
+
+    for i in 1..num_x {
+        for j in 1..num_y {
+            //cnt += 1;
+
+            // u
+            if s[(i * n + j) as usize] != 0.0
+                && s[((i - 1) * n + j) as usize] != 0.0
+                && j < num_y - 1
+            {
+                let mut x = i as f32 * h;
+                let mut y = j as f32 * h + h2;
+                let mut u_value = u[(i * n + j) as usize];
+                let v_value = avg_v(num_y, v, i, j).unwrap();
+                x = x - dt * u_value;
+                y = y - dt * v_value;
+                u_value = sample_field(num_y, num_x, h, x, y, "U_FIELD", u, v, m).unwrap();
+                new_u[(i * n + j) as usize] = u_value;
+            }
+
+            //v
+            if s[(i * n + j) as usize] != 0.0 && s[(i * n + j - 1) as usize] != 0.0 && i < num_x - 1
+            {
+                let mut x = i as f32 * h + h2;
+                let mut y = j as f32 * h;
+                let u_value = avg_u(num_y, u, i, j).unwrap();
+                let mut v_value = v[(i * n + j) as usize];
+                x = x - dt * u_value;
+                y = y - dt * v_value;
+                v_value = sample_field(num_y, num_x, h, x, y, "V_FIELD", u, v, m).unwrap();
+                new_v[(i * n + j) as usize] = v_value;
+            }
+        }
+    }
+    u.copy_from_slice(new_u);
+    v.copy_from_slice(new_v);
+}
+
+pub fn advect_smoke(
+    dt: f32,
+    h: f32,
+    num_x: u32,
+    num_y: u32,
+    new_m: &mut [f32],
+    m: &mut [f32],
+    s: &[f32],
+    u: &mut [f32],
+    v: &mut [f32],
+) {
+    new_m.copy_from_slice(m);
+
+    let n = num_y;
+    let h = h;
+    let h2 = 0.5 * h;
+
+    for i in 1..(num_x - 1) {
+        for j in 1..(num_y - 1) {
+            if s[(i * n + j) as usize] != 0.0 {
+                let u_value = u[(i * n + j) as usize] + u[((i + 1) * n + j) as usize] * 0.5;
+                let v_value = v[(i * n + j) as usize] + v[(i * n + (j + 1)) as usize] * 0.5;
+                let x = i as f32 * h + h2 - dt * u_value;
+                let y = j as f32 * h + h2 - dt * v_value;
+
+                new_m[(i * n + j) as usize] =
+                    sample_field(num_y, num_x, h, x, y, "S_FIELD", u, v, m).unwrap();
+            }
+        }
+    }
+    m.copy_from_slice(new_m);
 }
 
 pub fn mouse_clicked(app: &App, model: &Model) -> Option<(u32, u32)> {
