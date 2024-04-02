@@ -7,6 +7,7 @@ pub use crate::simulation::advect_vel;
 pub use crate::simulation::extrapolate;
 pub use crate::simulation::integrate;
 pub use crate::simulation::mouse_clicked;
+pub use crate::simulation::setup_scene;
 pub use crate::simulation::solve_incompressibility;
 
 fn main() {
@@ -40,6 +41,7 @@ struct Scene {
     show_velocities: bool,
     show_pressure: bool,
     show_smoke: bool,
+    initial_run: bool,
 }
 
 impl Scene {
@@ -59,6 +61,7 @@ impl Scene {
         show_velocities: bool,
         show_pressure: bool,
         show_smoke: bool,
+        initial_run: bool,
     ) -> Self {
         Scene {
             gravity,
@@ -76,6 +79,7 @@ impl Scene {
             show_velocities,
             show_pressure,
             show_smoke,
+            initial_run,
         }
     }
 }
@@ -140,6 +144,7 @@ fn model(app: &App) -> Model {
         false,
         false,
         true,
+        true,
     );
 
     Model {
@@ -166,17 +171,23 @@ fn model(app: &App) -> Model {
 }
 
 fn update(app: &App, model: &mut Model, _update: Update) {
-    let scene = &model.scene;
-
-    let _cell_position_opt: Option<(u32, u32)> = simulation::mouse_clicked(app, model);
+    if model.scene.initial_run {
+        simulation::setup_scene(
+            model.num_x,
+            model.num_y,
+            model.s.as_mut_slice(),
+            model.u.as_mut_slice(),
+        );
+        model.scene.initial_run = false;
+    }
 
     simulation::integrate(
         model.num_y,
         model.num_x,
         model.s.as_mut_slice(),
         model.v.as_mut_slice(),
-        scene.dt,
-        scene.gravity,
+        model.scene.dt,
+        model.scene.gravity,
     );
 
     simulation::solve_incompressibility(
@@ -188,9 +199,9 @@ fn update(app: &App, model: &mut Model, _update: Update) {
         model.v.as_mut_slice(),
         model.u.as_mut_slice(),
         model.p.as_mut_slice(),
-        scene.over_relaxation,
-        scene.num_iters,
-        scene.dt,
+        model.scene.over_relaxation,
+        model.scene.num_iters,
+        model.scene.dt,
     );
 
     simulation::extrapolate(
@@ -201,7 +212,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
     );
 
     simulation::advect_vel(
-        scene.dt,
+        model.scene.dt,
         model.new_u.as_mut_slice(),
         model.new_v.as_mut_slice(),
         model.u.as_mut_slice(),
@@ -214,7 +225,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
     );
 
     simulation::advect_smoke(
-        scene.dt,
+        model.scene.dt,
         model.h,
         model.num_x,
         model.num_y,

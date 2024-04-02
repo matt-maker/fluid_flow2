@@ -1,6 +1,27 @@
 use crate::Model;
 use nannou::prelude::*;
 
+pub fn setup_scene(num_x: u32, num_y: u32, s: &mut [f32], u: &mut [f32]) {
+    let in_vel: f32 = 2.0;
+    let n = num_y;
+
+    for i in 0..num_x {
+        for j in 0..num_y {
+            let mut s_value: f32 = 1.0;
+
+            if i == 0 || j == 0 || j == num_y - 1 {
+                s_value = 0.0
+            }
+            s[(i * n + j) as usize] = s_value;
+
+            if i == 1 {
+                u[(i * n + j) as usize] = in_vel;
+            }
+        }
+    }
+    //let pipe_h = 0.1 * num_y as f32;
+}
+
 pub fn integrate(num_y: u32, num_x: u32, s: &[f32], v: &mut [f32], dt: f32, gravity: f32) {
     let n = num_y;
     for i in 1..num_x {
