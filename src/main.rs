@@ -129,7 +129,7 @@ fn model(app: &App) -> Model {
     }
 
     let scene = Scene::new(
-        -9.81,
+        0.0,
         1.0 / 60.0,
         40,
         0,
@@ -173,10 +173,11 @@ fn model(app: &App) -> Model {
 fn update(app: &App, model: &mut Model, _update: Update) {
     if model.scene.initial_run {
         simulation::setup_scene(
-            model.num_x,
-            model.num_y,
+            model.grid_size,
+            model.grid_size,
             model.s.as_mut_slice(),
             model.u.as_mut_slice(),
+            model.m.as_mut_slice(),
         );
         model.scene.initial_run = false;
     }
